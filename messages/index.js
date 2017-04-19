@@ -13,11 +13,28 @@ var connector = useEmulator ? new builder.ChatConnector() : new botbuilder_azure
 
 var bot = new builder.UniversalBot(connector);
 
-bot.dialog('/', function (session) {
-    session.send('You said ' + session.message.text);
-    session.say(`You said ${session.message.text}`);
-    session.endConversation('I have to go, bye!');
-});
+var LUISRECOG = new builder.LuisRecognizer(process.env['LuisEndpoint']);
+
+var intents = new builder.IntentDialog({ recognizer: LUISRECOG });
+
+bot.dialog('/', intents);
+
+intents.matches('GetFood', 'GetFood');
+
+bot.dialog('GetFood', [
+    (session, args, next) => {
+        var searchCuisine = builder.EntityRecognizer.findAllEntities(args.entities, 'Cuisine');
+        var listOfCuisines = (function () {
+            var cuisines = []
+            for (var idx = 0; idx < searchCuisine.length; idx++) {
+                cuisines.push(searchCuisine[idx]['entity']);
+            }
+            return cuisines;
+        })();
+        session.say('You talked about' + listOfCuisines[0], 'You mentioned ' + listOfCuisines[0]);
+        session.endConversation();
+    }
+]);
 
 if (useEmulator) {
     var restify = require('restify');
